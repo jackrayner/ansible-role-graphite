@@ -1,0 +1,8 @@
+---
+# defaults file for ansible-role-graphite
+
+graphite_hostname: "graphite"
+certbot_admin_email: "admin@example.com"
+do_domain: "example.com"
+do_oauth_token: ""
+do_ssh_keys: ""

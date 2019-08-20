@@ -1,0 +1,77 @@
+- name: Install packages
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg-agent
+      - software-properties-common
+      - nginx
+      - python3-pip
+- name: Install Docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+- name: Add docker repo
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb['codename'] }} stable"
+    state: present
+- name: Install docker using apt
+  apt:
+    name: "{{ packages }}"
+    update_cache: yes
+  vars:
+    packages:
+      - docker
+      - docker-compose
+- name: Install docker-py
+  pip:
+    name: docker-py
+
+- name: Put NGNIX config in place
+  template:
+    src: graphite-nginx.j2
+    dest: /etc/nginx/sites-available/graphite
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+  - Restart NGINX
+- name: Remove default NGINX config
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify:
+  - Restart NGINX
+- name: Enable NGINX config
+  file:
+    src: /etc/nginx/sites-available/graphite
+    dest: /etc/nginx/sites-enabled/graphite
+    state: link
+  notify:
+  - Restart NGINX
+- name: Enable and start grafana service
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+- name: Start graphite docker container
+  docker_container:
+    name: graphite
+    image: graphiteapp/graphite-statsd:1.1.5-12
+    state: started
+    published_ports:
+      - "3031:80"
+      - "2003:2003"
+      - "2004:2004"
+      - "2023:2023"
+      - "2024:2024"
+      - "8125:8125/udp"
+      - "8126:8126"
+    volumes:
+      - "/opt/graphite/conf:/opt/graphite/conf"
+      - "/opt/graphite/storage:/opt/graphite/storage"
+      - "/opt/statsd/config:/opt/statsd/config"
